@@ -1,0 +1,137 @@
+From 9ae08c92a1a2b229224e8e811be59fd342ec7f2d Mon Sep 17 00:00:00 2001
+From: ntaka19 <naruakitakano@gmail.com>
+Date: Sun, 28 Jan 2024 22:45:38 +0900
+Subject: [PATCH] first
+
+---
+ 0001-Move-python-files-to-datafeed-dir.patch | 28 ++++++++++++++++++++
+ src/App.tsx                                  | 23 ++++++++++++++--
+ src/Graph.tsx                                | 12 ++++++++-
+ 3 files changed, 60 insertions(+), 3 deletions(-)
+ create mode 100644 0001-Move-python-files-to-datafeed-dir.patch
+
+diff --git a/0001-Move-python-files-to-datafeed-dir.patch b/0001-Move-python-files-to-datafeed-dir.patch
+new file mode 100644
+index 0000000..68c66c0
+--- /dev/null
++++ b/0001-Move-python-files-to-datafeed-dir.patch
+@@ -0,0 +1,28 @@
++From 3022e1f02670f8336f457078532f98c50f77496e Mon Sep 17 00:00:00 2001
++From: Joe Ferrer <joe@theforage.com>
++Date: Wed, 1 Mar 2023 00:45:20 +1100
++Subject: [PATCH] Move python files to datafeed dir
++
++---
++ requirements.txt => datafeed/requirements.txt | 0
++ server.py => datafeed/server3.py              | 0
++ datafeed/test.csv                             | 0
++ 3 files changed, 0 insertions(+), 0 deletions(-)
++ rename requirements.txt => datafeed/requirements.txt (100%)
++ rename server.py => datafeed/server3.py (100%)
++ create mode 100644 datafeed/test.csv
++
++diff --git a/requirements.txt b/datafeed/requirements.txt
++similarity index 100%
++rename from requirements.txt
++rename to datafeed/requirements.txt
++diff --git a/server.py b/datafeed/server3.py
++similarity index 100%
++rename from server.py
++rename to datafeed/server3.py
++diff --git a/datafeed/test.csv b/datafeed/test.csv
++new file mode 100644
++index 0000000..e69de29
++-- 
++2.25.1
++
+diff --git a/src/App.tsx b/src/App.tsx
+index 0728518..f482b17 100755
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -8,6 +8,7 @@ import './App.css';
+  */
+ interface IState {
+   data: ServerRespond[],
++  showGraph: boolean,
+ }
+ 
+ /**
+@@ -22,6 +23,7 @@ class App extends Component<{}, IState> {
+       // data saves the server responds.
+       // We use this state to parse data down to the child element (Graph) as element property
+       data: [],
++      showGraph: false,
+     };
+   }
+ 
+@@ -29,18 +31,35 @@ class App extends Component<{}, IState> {
+    * Render Graph react component with state.data parse as property data
+    */
+   renderGraph() {
+-    return (<Graph data={this.state.data}/>)
++    if (this.state.showGraph){
++      return (<Graph data={this.state.data}/>)
++    }
++    //return (<Graph data={this.state.data}/>)
+   }
+ 
+   /**
+    * Get new data from server and update the state with the new data
+    */
+   getDataFromServer() {
++    let x = 0;
++    const interval = setInterval(() => {
++      DataStreamer.getData((serverResponds: ServerRespond[]) => {
++        this.setState({
++          data: serverResponds,
++          showGraph: true,
++        });
++      });
++      x++;
++      if (x > 1000){
++        clearInterval(interval);
++      }
++    }, 100);
++    /*
+     DataStreamer.getData((serverResponds: ServerRespond[]) => {
+       // Update the state by creating a new array of data that consists of
+       // Previous data in the state and the new data from server
+       this.setState({ data: [...this.state.data, ...serverResponds] });
+-    });
++    });*/
+   }
+ 
+   /**
+diff --git a/src/Graph.tsx b/src/Graph.tsx
+index 3b2a7da..b74e35a 100644
+--- a/src/Graph.tsx
++++ b/src/Graph.tsx
+@@ -14,7 +14,7 @@ interface IProps {
+  * Perspective library adds load to HTMLElement prototype.
+  * This interface acts as a wrapper for Typescript compiler.
+  */
+-interface PerspectiveViewerElement {
++interface PerspectiveViewerElement extends HTMLElement {
+   load: (table: Table) => void,
+ }
+ 
+@@ -34,6 +34,16 @@ class Graph extends Component<IProps, {}> {
+     // Get element to attach the table from the DOM.
+     const elem: PerspectiveViewerElement = document.getElementsByTagName('perspective-viewer')[0] as unknown as PerspectiveViewerElement;
+ 
++    elem.setAttribute('view', 'y_line');
++    elem.setAttribute('column-pivots', '["stock"]');
++    elem.setAttribute('row-pivots', '["timestamp"]');
++    elem.setAttribute('columns', '["top_ask_price"]');
++    elem.setAttribute('aggregates',
++     '{"stock":"distinct count",\
++      "top_ask_price": "avg",\
++      "top_bid_price": "avg",\
++      "timestamp":"distinct count"}');
++    
+     const schema = {
+       stock: 'string',
+       top_ask_price: 'float',
+-- 
+2.25.1
+
